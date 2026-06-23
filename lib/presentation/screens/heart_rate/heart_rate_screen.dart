@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/heart_rate_reading.dart';
+import '../../../data/repositories/mock_qcband_repository.dart';
 import '../../../main.dart';
 import '../../providers/providers.dart';
+import '../../widgets/app_bottom_nav.dart';
 
 class HeartRateScreen extends ConsumerStatefulWidget {
   const HeartRateScreen({super.key});
@@ -19,6 +21,7 @@ class _HeartRateScreenState extends ConsumerState<HeartRateScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   StreamSubscription? _hrSub;
+  MockQCBandRepository? _mock;
 
   @override
   void initState() {
@@ -38,9 +41,11 @@ class _HeartRateScreenState extends ConsumerState<HeartRateScreen>
 
   @override
   void dispose() {
-    _stopMonitoring();
-    _pulseController.dispose();
+    // Do not touch `ref` here: dispose can run after the ProviderScope element
+    // is torn down (e.g. navigating away), which throws. Clean up locally.
     _hrSub?.cancel();
+    _mock?.stopMockHeartRate();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -52,6 +57,7 @@ class _HeartRateScreenState extends ConsumerState<HeartRateScreen>
 
     if (isDemo) {
       final mock = ref.read(mockRepositoryProvider);
+      _mock = mock;
       mock.startMockHeartRate();
       _hrSub = mock.mockHeartRateStream.listen((hr) {
         ref.read(heartRateHistoryProvider.notifier).add(hr);
@@ -103,10 +109,19 @@ class _HeartRateScreenState extends ConsumerState<HeartRateScreen>
     final history = ref.watch(heartRateHistoryProvider);
     final latestBpm = history.isNotEmpty ? history.last.bpm : 0;
 
+    final minBpm =
+        history.isNotEmpty ? history.map((e) => e.bpm).reduce(math.min) : 0;
+    final maxBpm =
+        history.isNotEmpty ? history.map((e) => e.bpm).reduce(math.max) : 0;
+    final avgBpm = history.isNotEmpty
+        ? (history.map((e) => e.bpm).reduce((a, b) => a + b) / history.length)
+            .round()
+        : 0;
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () {
             _stopMonitoring();
             context.go('/dashboard');
@@ -114,118 +129,151 @@ class _HeartRateScreenState extends ConsumerState<HeartRateScreen>
         ),
         title: const Text('Heart Rate'),
       ),
-      body: Column(
+      bottomNavigationBar: const AppBottomNav(activeIndex: 1),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
-          const SizedBox(height: 24),
-
-          // BPM display with pulse animation
-          AnimatedBuilder(
-            animation: _pulseController,
-            builder: (context, child) {
-              final scale =
-                  1.0 + (0.1 * math.sin(_pulseController.value * math.pi));
-              return Transform.scale(
-                scale: isMonitoring ? scale : 1.0,
-                child: child,
-              );
-            },
-            child: Column(
-              children: [
-                Icon(
-                  Icons.favorite,
+          // BPM hero
+          Column(
+            children: [
+              const SizedBox(height: 8),
+              AnimatedBuilder(
+                animation: _pulseController,
+                builder: (context, child) {
+                  final scale =
+                      1.0 + (0.1 * math.sin(_pulseController.value * math.pi));
+                  return Transform.scale(
+                    scale: isMonitoring ? scale : 1.0,
+                    child: child,
+                  );
+                },
+                child: Icon(
+                  Icons.favorite_rounded,
                   size: 64,
                   color: isMonitoring && latestBpm > 0
-                      ? AppTheme.heartRateColor
-                      : AppTheme.heartRateColor.withValues(alpha: 0.4),
+                      ? AppTheme.tertiaryContainer
+                      : AppTheme.tertiaryContainer.withValues(alpha: 0.4),
                 ),
-                const SizedBox(height: 8),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                latestBpm > 0 ? '$latestBpm' : '--',
+                style: const TextStyle(
+                  fontSize: 64,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1.5,
+                  color: AppTheme.onSurface,
+                ),
+              ),
+              Text(
+                'BPM',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 2.0,
+                  color: AppTheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+
+          // Stat cards
+          Row(
+            children: [
+              Expanded(
+                child: _StatCard(
+                  label: 'MIN',
+                  value: minBpm > 0 ? '$minBpm' : '--',
+                  color: AppTheme.primary,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _StatCard(
+                  label: 'AVG',
+                  value: avgBpm > 0 ? '$avgBpm' : '--',
+                  color: AppTheme.primary,
+                  highlighted: true,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _StatCard(
+                  label: 'MAX',
+                  value: maxBpm > 0 ? '$maxBpm' : '--',
+                  color: AppTheme.error,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Live graph card
+          Container(
+            height: 220,
+            padding: const EdgeInsets.all(16),
+            decoration: AppTheme.cardDecoration(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  latestBpm > 0 ? '$latestBpm' : '--',
-                  style: const TextStyle(
-                    fontSize: 64,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.heartRateColor,
+                  'LIVE ACTIVITY',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
+                    color: AppTheme.onSurfaceVariant,
                   ),
                 ),
-                const Text(
-                  'BPM',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: AppTheme.heartRateColor,
-                    fontWeight: FontWeight.w500,
-                  ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: history.length < 2
+                      ? Center(
+                          child: Text(
+                            isMonitoring
+                                ? 'Waiting for heart rate data...'
+                                : 'Tap Start to begin monitoring',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        )
+                      : CustomPaint(
+                          size: Size.infinite,
+                          painter: _HeartRateChartPainter(readings: history),
+                        ),
                 ),
               ],
             ),
           ),
-
           const SizedBox(height: 24),
 
-          // Stats row
-          if (history.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _StatChip(
-                    label: 'Min',
-                    value: '${history.map((e) => e.bpm).reduce(math.min)}',
-                    color: AppTheme.sleepColor,
-                  ),
-                  _StatChip(
-                    label: 'Avg',
-                    value:
-                        '${(history.map((e) => e.bpm).reduce((a, b) => a + b) / history.length).round()}',
-                    color: AppTheme.stepsColor,
-                  ),
-                  _StatChip(
-                    label: 'Max',
-                    value: '${history.map((e) => e.bpm).reduce(math.max)}',
-                    color: AppTheme.heartRateColor,
-                  ),
-                ],
+          // Control button
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton.icon(
+              onPressed: isMonitoring ? _stopMonitoring : _startMonitoring,
+              icon: Icon(isMonitoring
+                  ? Icons.stop_circle_rounded
+                  : Icons.play_arrow_rounded),
+              label: Text(isMonitoring ? 'Stop Monitoring' : 'Start Monitoring'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    isMonitoring ? AppTheme.error : AppTheme.primary,
+                foregroundColor: Colors.white,
+                elevation: 2,
+                shadowColor: (isMonitoring ? AppTheme.error : AppTheme.primary)
+                    .withValues(alpha: 0.4),
               ),
             ),
-
-          const SizedBox(height: 24),
-
-          // Chart
-          Expanded(
-            child: history.length < 2
-                ? Center(
-                    child: Text(
-                      isMonitoring
-                          ? 'Waiting for heart rate data...'
-                          : 'Tap Start to begin monitoring',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                  )
-                : Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: CustomPaint(
-                      size: Size.infinite,
-                      painter: _HeartRateChartPainter(readings: history),
-                    ),
-                  ),
           ),
-
-          // Start/Stop button
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: isMonitoring ? _stopMonitoring : _startMonitoring,
-                icon: Icon(isMonitoring ? Icons.stop : Icons.play_arrow),
-                label: Text(
-                    isMonitoring ? 'Stop Monitoring' : 'Start Monitoring'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isMonitoring
-                      ? AppTheme.heartRateColor
-                      : Theme.of(context).colorScheme.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
+          const SizedBox(height: 12),
+          Center(
+            child: Text(
+              'Sensor connected via Bluetooth Smart',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppTheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -235,32 +283,56 @@ class _HeartRateScreenState extends ConsumerState<HeartRateScreen>
   }
 }
 
-class _StatChip extends StatelessWidget {
+class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
+  final bool highlighted;
 
-  const _StatChip({
+  const _StatCard({
     required this.label,
     required this.value,
     required this.color,
+    this.highlighted = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(label, style: Theme.of(context).textTheme.bodyMedium),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: highlighted
+              ? AppTheme.primary.withValues(alpha: 0.25)
+              : AppTheme.outlineVariant.withValues(alpha: 0.3),
+          width: highlighted ? 1.5 : 1,
         ),
-      ],
+        boxShadow: const [AppTheme.cardShadow],
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
+              color: AppTheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -281,7 +353,7 @@ class _HeartRateChartPainter extends CustomPainter {
 
     // Grid lines
     final gridPaint = Paint()
-      ..color = Colors.white12
+      ..color = AppTheme.outlineVariant.withValues(alpha: 0.4)
       ..strokeWidth = 0.5;
 
     for (var i = 0; i < 5; i++) {
@@ -291,18 +363,19 @@ class _HeartRateChartPainter extends CustomPainter {
 
     // Line chart
     final linePaint = Paint()
-      ..color = AppTheme.heartRateColor
-      ..strokeWidth = 2.5
+      ..color = AppTheme.tertiary
+      ..strokeWidth = 3
       ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
 
     final fillPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          AppTheme.heartRateColor.withValues(alpha: 0.3),
-          AppTheme.heartRateColor.withValues(alpha: 0.0),
+          AppTheme.tertiaryContainer.withValues(alpha: 0.25),
+          AppTheme.tertiaryContainer.withValues(alpha: 0.0),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
@@ -337,11 +410,11 @@ class _HeartRateChartPainter extends CustomPainter {
       canvas.drawCircle(
         Offset(lastX, lastY),
         5,
-        Paint()..color = AppTheme.heartRateColor,
+        Paint()..color = AppTheme.tertiary,
       );
       canvas.drawCircle(
         Offset(lastX, lastY),
-        3,
+        2.5,
         Paint()..color = Colors.white,
       );
     }
