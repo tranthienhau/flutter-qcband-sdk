@@ -13,14 +13,21 @@ class ScanScreen extends ConsumerStatefulWidget {
   ConsumerState<ScanScreen> createState() => _ScanScreenState();
 }
 
-class _ScanScreenState extends ConsumerState<ScanScreen> {
+class _ScanScreenState extends ConsumerState<ScanScreen>
+    with SingleTickerProviderStateMixin {
   List<BleDevice> _mockDevices = [];
   bool _mockScanning = false;
   bool _mockConnecting = false;
+  late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+
     // Listen for connection state changes (real BLE only)
     ref.listenManual(connectionStateProvider, (_, next) {
       if (ref.read(demoModeProvider)) return;
@@ -44,6 +51,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         _runVideoTour();
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
   }
 
   Future<void> _runVideoTour() async {
@@ -170,129 +183,234 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
     // Combine real scan results with mock devices
     final realDevices = scanResults.whenOrNull(data: (d) => d) ?? [];
-    final allDevices = isDemo || _mockDevices.isNotEmpty ? _mockDevices : realDevices;
+    final allDevices =
+        isDemo || _mockDevices.isNotEmpty ? _mockDevices : realDevices;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('QCBand Scanner'),
+        title: const Text('VitalHealth'),
+        titleTextStyle: const TextStyle(
+          color: AppTheme.primary,
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.3,
+        ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Status bar
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            color: isConnecting
-                ? AppTheme.heartRateColor.withValues(alpha: 0.2)
-                : scanning
-                    ? Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.2)
-                    : Colors.transparent,
+          ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 180),
+            children: [
+              // Intro
+              Column(
+                children: [
+                  Text(
+                    'VitalHealth Scanner',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isConnecting
+                        ? 'Connecting to device...'
+                        : scanning
+                            ? 'Scanning for nearby devices...'
+                            : 'Tap Scan or use Demo Mode to find devices',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: AppTheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Pulse animation
+              _ScanPulse(controller: _pulseController, active: scanning),
+              const SizedBox(height: 32),
+
+              // Devices
+              if (allDevices.isNotEmpty) ...[
+                Text(
+                  'NEARBY DEVICES',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
+                    color: AppTheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...allDevices.map(
+                  (device) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _DeviceCard(
+                      device: device,
+                      onTap: isConnecting
+                          ? null
+                          : () => _mockDevices.isNotEmpty
+                              ? _connectDemoDevice(device)
+                              : _connectToDevice(device),
+                    ),
+                  ),
+                ),
+              ] else if (!scanning) ...[
+                const SizedBox(height: 24),
+                Center(
+                  child: Text(
+                    'No devices found yet.\nMake sure your QCBand is nearby.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ],
+          ),
+
+          // Sticky bottom controls
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 24,
             child: Row(
               children: [
-                if (isConnecting) ...[
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                Expanded(
+                  child: _ActionButton(
+                    label: 'Demo',
+                    icon: Icons.play_circle_fill_rounded,
+                    color: AppTheme.secondary,
+                    onPressed:
+                        scanning || isConnecting ? null : _startDemoScan,
                   ),
-                  const SizedBox(width: 12),
-                  const Text('Connecting...'),
-                ] else if (scanning) ...[
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _ActionButton(
+                    label: scanning ? 'Scanning...' : 'Scan',
+                    icon: Icons.bluetooth_rounded,
+                    color: AppTheme.primary,
+                    loading: scanning,
+                    onPressed: scanning || isConnecting ? null : _startScan,
                   ),
-                  const SizedBox(width: 12),
-                  const Text('Scanning for devices...'),
-                ] else
-                  const Text('Tap Scan or use Demo Mode'),
+                ),
               ],
             ),
           ),
-
-          // Device list
-          Expanded(
-            child: allDevices.isEmpty && !scanning
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.bluetooth_searching,
-                          size: 80,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.5),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No devices found',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Make sure your QCBand bracelet is nearby\nor tap Demo Mode to preview the app',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        const SizedBox(height: 24),
-                        OutlinedButton.icon(
-                          onPressed: scanning || isConnecting
-                              ? null
-                              : _startDemoScan,
-                          icon: const Icon(Icons.science),
-                          label: const Text('Demo Mode'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppTheme.spo2Color,
-                            side: const BorderSide(color: AppTheme.spo2Color),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 12),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: allDevices.length,
-                    itemBuilder: (context, index) {
-                      final device = allDevices[index];
-                      return _DeviceCard(
-                        device: device,
-                        onTap: isConnecting
-                            ? null
-                            : () => _mockDevices.isNotEmpty
-                                ? _connectDemoDevice(device)
-                                : _connectToDevice(device),
-                      );
-                    },
-                  ),
-          ),
         ],
       ),
-      floatingActionButton: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'demo',
-            onPressed: scanning || isConnecting ? null : _startDemoScan,
-            icon: const Icon(Icons.science),
-            label: const Text('Demo'),
-            backgroundColor: AppTheme.spo2Color,
+    );
+  }
+}
+
+class _ScanPulse extends StatelessWidget {
+  final AnimationController controller;
+  final bool active;
+
+  const _ScanPulse({required this.controller, required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 192,
+      height: 192,
+      child: Center(
+        child: AnimatedBuilder(
+          animation: controller,
+          builder: (context, child) {
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                if (active) ...[
+                  _ring(controller.value),
+                  _ring((controller.value + 0.5) % 1.0),
+                ],
+                child!,
+              ],
+            );
+          },
+          child: Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryContainer,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withValues(alpha: 0.35),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.bluetooth_searching_rounded,
+              color: Colors.white,
+              size: 40,
+            ),
           ),
-          const SizedBox(width: 12),
-          FloatingActionButton.extended(
-            heroTag: 'scan',
-            onPressed: scanning || isConnecting ? null : _startScan,
-            icon: const Icon(Icons.bluetooth_searching),
-            label: Text(scanning ? 'Scanning...' : 'Scan'),
+        ),
+      ),
+    );
+  }
+
+  Widget _ring(double t) {
+    final size = 96 + t * 96;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: AppTheme.primaryContainer.withValues(alpha: (1 - t) * 0.4),
+          width: 2,
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool loading;
+  final VoidCallback? onPressed;
+
+  const _ActionButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    this.loading = false,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 56,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: loading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Icon(icon, size: 20),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: color.withValues(alpha: 0.5),
+          disabledForegroundColor: Colors.white,
+          elevation: 2,
+          shadowColor: color.withValues(alpha: 0.4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -305,72 +423,99 @@ class _DeviceCard extends StatelessWidget {
   const _DeviceCard({required this.device, this.onTap});
 
   Color _rssiColor(int rssi) {
-    if (rssi > -60) return AppTheme.spo2Color;
-    if (rssi > -80) return AppTheme.stepsColor;
-    return AppTheme.heartRateColor;
+    if (rssi > -60) return AppTheme.secondary;
+    if (rssi > -80) return AppTheme.onSurfaceVariant;
+    return AppTheme.error;
   }
 
   int _rssiStrength(int rssi) {
-    if (rssi > -60) return 3;
+    if (rssi > -55) return 4;
+    if (rssi > -65) return 3;
     if (rssi > -80) return 2;
     return 1;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
+    final strength = _rssiStrength(device.rssi);
+    final color = _rssiColor(device.rssi);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            Icons.watch,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-        title: Text(
-          device.name.isEmpty ? 'Unknown Device' : device.name,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          device.id,
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        trailing: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, (i) {
-                return Container(
-                  width: 4,
-                  height: 8.0 + (i * 4),
-                  margin: const EdgeInsets.symmetric(horizontal: 1),
-                  decoration: BoxDecoration(
-                    color: i < _rssiStrength(device.rssi)
-                        ? _rssiColor(device.rssi)
-                        : Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${device.rssi} dBm',
-              style: TextStyle(
-                fontSize: 11,
-                color: _rssiColor(device.rssi),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: AppTheme.cardDecoration(),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryFixed,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.watch_rounded, color: AppTheme.primary),
               ),
-            ),
-          ],
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      device.name.isEmpty ? 'Unknown Device' : device.name,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      device.id,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: List.generate(4, (i) {
+                      return Container(
+                        width: 3,
+                        height: 6.0 + i * 4,
+                        margin: const EdgeInsets.symmetric(horizontal: 1),
+                        decoration: BoxDecoration(
+                          color: i < strength
+                              ? AppTheme.mint
+                              : AppTheme.surfaceHighest,
+                          borderRadius: BorderRadius.circular(1),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${device.rssi} dBm',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
