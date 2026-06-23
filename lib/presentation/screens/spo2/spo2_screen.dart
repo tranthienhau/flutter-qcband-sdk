@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/blood_oxygen_reading.dart';
 import '../../providers/providers.dart';
+import '../../widgets/app_bottom_nav.dart';
 
 class Spo2Screen extends ConsumerWidget {
   const Spo2Screen({super.key});
@@ -16,25 +17,29 @@ class Spo2Screen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.go('/dashboard'),
         ),
         title: const Text('Blood Oxygen'),
       ),
+      bottomNavigationBar: const AppBottomNav(activeIndex: 2),
       body: spo2Async.when(
         data: (readings) {
           if (readings.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.water_drop, size: 64, color: AppTheme.spo2Color),
-                  SizedBox(height: 16),
-                  Text('No SpO2 data available'),
-                  SizedBox(height: 8),
+                  const Icon(Icons.water_drop_rounded,
+                      size: 64, color: AppTheme.mint),
+                  const SizedBox(height: 16),
+                  Text('No SpO2 data available',
+                      style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
                   Text(
                     'Enable scheduled blood oxygen\nmeasurement on your device',
                     textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
               ),
@@ -48,93 +53,125 @@ class Spo2Screen extends ConsumerWidget {
           final maxVal = readings.map((r) => r.spo2).reduce(math.max);
 
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
               // Gauge card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        width: 200,
-                        height: 200,
-                        child: CustomPaint(
-                          painter: _SpO2GaugePainter(value: latest.spo2),
-                          child: Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '${latest.spo2.round()}%',
-                                  style: const TextStyle(
-                                    fontSize: 42,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.spo2Color,
-                                  ),
+              Container(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+                decoration: AppTheme.cardDecoration(),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: 220,
+                      height: 200,
+                      child: CustomPaint(
+                        painter: _SpO2GaugePainter(value: latest.spo2),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${latest.spo2.round()}%',
+                                style: const TextStyle(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -1,
+                                  color: AppTheme.onSurface,
                                 ),
-                                const Text(
-                                  'SpO2',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: AppTheme.spo2Color,
-                                  ),
+                              ),
+                              Text(
+                                'SPO2',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 2,
+                                  color: AppTheme.secondary,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _statusLabel(latest.spo2),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: _statusColor(latest.spo2),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Stats
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _StatColumn(
-                          label: 'Min', value: '${minVal.round()}%'),
-                      Container(width: 1, height: 40, color: Colors.white12),
-                      _StatColumn(
-                          label: 'Avg', value: '${avg.round()}%'),
-                      Container(width: 1, height: 40, color: Colors.white12),
-                      _StatColumn(
-                          label: 'Max', value: '${maxVal.round()}%'),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Readings list
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Today's Readings",
-                          style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: 12),
-                      ...readings.reversed.take(20).map(
-                            (r) => _ReadingRow(reading: r),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: _statusColor(latest.spo2),
+                            shape: BoxShape.circle,
                           ),
-                    ],
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _statusLabel(latest.spo2),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: _statusColor(latest.spo2),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Your blood oxygen levels are within the healthy range.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Stats grid
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatCell(label: 'MIN', value: '${minVal.round()}%'),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _StatCell(
+                      label: 'AVG',
+                      value: '${avg.round()}%',
+                      valueColor: AppTheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _StatCell(label: 'MAX', value: '${maxVal.round()}%'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              Text("Today's Readings",
+                  style: Theme.of(context).textTheme.headlineMedium),
+              const SizedBox(height: 12),
+              ...readings.reversed
+                  .take(20)
+                  .map((r) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _ReadingCard(reading: r),
+                      )),
+              const SizedBox(height: 8),
+
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton.icon(
+                  onPressed: () => ref.invalidate(bloodOxygenProvider(0)),
+                  icon: const Icon(Icons.sensors_rounded),
+                  label: const Text('Measure Now'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 2,
+                    shadowColor: AppTheme.primary.withValues(alpha: 0.4),
                   ),
                 ),
               ),
@@ -146,7 +183,8 @@ class Spo2Screen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const Icon(Icons.error_outline_rounded,
+                  size: 48, color: AppTheme.error),
               const SizedBox(height: 16),
               Text('Error: $e'),
               const SizedBox(height: 16),
@@ -168,75 +206,113 @@ class Spo2Screen extends ConsumerWidget {
   }
 
   Color _statusColor(double spo2) {
-    if (spo2 >= 95) return AppTheme.spo2Color;
-    if (spo2 >= 90) return AppTheme.stepsColor;
-    return AppTheme.heartRateColor;
+    if (spo2 >= 95) return AppTheme.secondary;
+    if (spo2 >= 90) return AppTheme.awakeColor;
+    return AppTheme.error;
   }
 }
 
-class _StatColumn extends StatelessWidget {
+class _StatCell extends StatelessWidget {
   final String label;
   final String value;
+  final Color? valueColor;
 
-  const _StatColumn({required this.label, required this.value});
+  const _StatCell({required this.label, required this.value, this.valueColor});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(label, style: Theme.of(context).textTheme.bodyMedium),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.spo2Color,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceLow,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+              color: AppTheme.onSurfaceVariant,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: valueColor ?? AppTheme.onSurface,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _ReadingRow extends StatelessWidget {
+class _ReadingCard extends StatelessWidget {
   final BloodOxygenReading reading;
 
-  const _ReadingRow({required this.reading});
+  const _ReadingCard({required this.reading});
 
   @override
   Widget build(BuildContext context) {
     final hour = reading.timestamp.hour.toString().padLeft(2, '0');
     final minute = reading.timestamp.minute.toString().padLeft(2, '0');
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: AppTheme.cardDecoration(),
       child: Row(
         children: [
-          Text(
-            '$hour:$minute',
-            style: Theme.of(context).textTheme.bodyMedium,
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppTheme.secondaryContainer.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.water_drop_rounded,
+                color: AppTheme.secondary, size: 20),
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: reading.spo2 / 100,
-                backgroundColor: Colors.white10,
-                color: reading.spo2 >= 95
-                    ? AppTheme.spo2Color
-                    : reading.spo2 >= 90
-                        ? AppTheme.stepsColor
-                        : AppTheme.heartRateColor,
-                minHeight: 6,
+            child: Text(
+              '$hour:$minute',
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w500,
+                color: AppTheme.onSurface,
               ),
             ),
           ),
-          const SizedBox(width: 12),
           Text(
             '${reading.spo2.round()}%',
-            style: const TextStyle(fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.onSurface,
+            ),
+          ),
+          const SizedBox(width: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: SizedBox(
+              width: 64,
+              height: 6,
+              child: LinearProgressIndicator(
+                value: reading.spo2 / 100,
+                backgroundColor: AppTheme.surfaceHighest,
+                color: reading.spo2 >= 95
+                    ? AppTheme.secondary
+                    : reading.spo2 >= 90
+                        ? AppTheme.awakeColor
+                        : AppTheme.error,
+              ),
+            ),
           ),
         ],
       ),
@@ -258,8 +334,8 @@ class _SpO2GaugePainter extends CustomPainter {
 
     // Background arc
     final bgPaint = Paint()
-      ..color = Colors.white10
-      ..strokeWidth = 12
+      ..color = AppTheme.surfaceHighest
+      ..strokeWidth = 14
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
@@ -271,19 +347,19 @@ class _SpO2GaugePainter extends CustomPainter {
       bgPaint,
     );
 
-    // Value arc
+    // Value arc (mint gradient)
     final fraction = ((value - 80) / 20).clamp(0.0, 1.0);
     final valuePaint = Paint()
-      ..strokeWidth = 12
+      ..strokeWidth = 14
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..shader = SweepGradient(
+      ..shader = const SweepGradient(
         startAngle: startAngle,
         endAngle: startAngle + sweepAngle,
-        colors: const [
-          AppTheme.heartRateColor,
-          AppTheme.stepsColor,
-          AppTheme.spo2Color,
+        colors: [
+          AppTheme.mintDim,
+          AppTheme.mint,
+          AppTheme.secondary,
         ],
       ).createShader(Rect.fromCircle(center: center, radius: radius));
 
@@ -302,7 +378,7 @@ class _SpO2GaugePainter extends CustomPainter {
     canvas.drawCircle(
       Offset(dotX, dotY),
       8,
-      Paint()..color = AppTheme.spo2Color,
+      Paint()..color = AppTheme.mint,
     );
     canvas.drawCircle(
       Offset(dotX, dotY),
