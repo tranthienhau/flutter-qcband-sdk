@@ -1,9 +1,11 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/sleep_segment.dart';
 import '../../providers/providers.dart';
+import '../../widgets/app_bottom_nav.dart';
 
 class SleepScreen extends ConsumerWidget {
   const SleepScreen({super.key});
@@ -16,21 +18,28 @@ class SleepScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.go('/dashboard'),
         ),
         title: const Text('Sleep'),
+        actions: const [
+          Icon(Icons.calendar_today_rounded, color: AppTheme.onSurfaceVariant),
+          SizedBox(width: 16),
+        ],
       ),
+      bottomNavigationBar: const AppBottomNav(activeIndex: 3),
       body: sleepAsync.when(
         data: (segments) {
           if (segments.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.bedtime, size: 64, color: AppTheme.sleepColor),
-                  SizedBox(height: 16),
-                  Text('No sleep data available'),
+                  const Icon(Icons.bedtime_rounded,
+                      size: 64, color: AppTheme.primary),
+                  const SizedBox(height: 16),
+                  Text('No sleep data available',
+                      style: Theme.of(context).textTheme.titleLarge),
                 ],
               ),
             );
@@ -51,132 +60,200 @@ class SleepScreen extends ConsumerWidget {
               .where((s) => s.type == SleepType.awake)
               .fold<int>(0, (sum, s) => sum + s.durationMinutes);
 
+          final asleep = totalMinutes - awakeMinutes;
+          final efficiency =
+              totalMinutes > 0 ? (asleep / totalMinutes * 100).round() : 0;
+          final quality = efficiency >= 85
+              ? 'Good'
+              : efficiency >= 70
+                  ? 'Fair'
+                  : 'Poor';
+
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
-              // Total sleep
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.bedtime,
-                          size: 40, color: AppTheme.sleepColor),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${totalMinutes ~/ 60}h ${totalMinutes % 60}m',
-                        style: const TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.sleepColor,
-                        ),
+              // Hero ring
+              Center(
+                child: SizedBox(
+                  width: 192,
+                  height: 192,
+                  child: CustomPaint(
+                    painter: _SleepRingPainter(
+                      fraction: totalMinutes > 0 ? asleep / totalMinutes : 0,
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.bedtime_rounded,
+                              color: AppTheme.primary, size: 28),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${totalMinutes ~/ 60}h ${totalMinutes % 60}m',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.onSurface,
+                            ),
+                          ),
+                          Text(
+                            'Total Sleep',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        'Total Sleep',
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
 
-              // Stacked bar chart
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Sleep Stages',
-                          style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: 16),
+              // Efficiency / Quality
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _MiniStat(
+                    label: 'EFFICIENCY',
+                    value: '$efficiency%',
+                    color: AppTheme.secondary,
+                  ),
+                  Container(
+                    width: 1,
+                    height: 32,
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    color: AppTheme.outlineVariant,
+                  ),
+                  _MiniStat(
+                    label: 'QUALITY',
+                    value: quality,
+                    color: AppTheme.primary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
 
-                      // Stacked bar
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: SizedBox(
-                          height: 32,
-                          child: Row(
-                            children: [
-                              if (deepMinutes > 0)
-                                Expanded(
+              // Sleep stages
+              Text('SLEEP STAGES',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
+                    color: AppTheme.onSurfaceVariant,
+                  )),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: AppTheme.cardDecoration(),
+                child: Column(
+                  children: [
+                    // Stacked bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: SizedBox(
+                        height: 24,
+                        child: Row(
+                          children: [
+                            if (deepMinutes > 0)
+                              Expanded(
                                   flex: deepMinutes,
                                   child: Container(
-                                      color: AppTheme.deepSleepColor),
-                                ),
-                              if (lightMinutes > 0)
-                                Expanded(
+                                      color: AppTheme.deepSleepColor)),
+                            if (lightMinutes > 0)
+                              Expanded(
                                   flex: lightMinutes,
                                   child: Container(
-                                      color: AppTheme.lightSleepColor),
-                                ),
-                              if (remMinutes > 0)
-                                Expanded(
+                                      color: AppTheme.lightSleepColor)),
+                            if (remMinutes > 0)
+                              Expanded(
                                   flex: remMinutes,
                                   child: Container(
-                                      color: AppTheme.remSleepColor),
-                                ),
-                              if (awakeMinutes > 0)
-                                Expanded(
+                                      color: AppTheme.remSleepColor)),
+                            if (awakeMinutes > 0)
+                              Expanded(
                                   flex: awakeMinutes,
                                   child:
-                                      Container(color: AppTheme.awakeColor),
-                                ),
-                            ],
-                          ),
+                                      Container(color: AppTheme.awakeColor)),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 20),
-
-                      // Legend + durations
-                      _SleepStageTile(
-                        label: 'Deep Sleep',
-                        duration: deepMinutes,
-                        color: AppTheme.deepSleepColor,
-                        total: totalMinutes,
-                      ),
-                      _SleepStageTile(
-                        label: 'Light Sleep',
-                        duration: lightMinutes,
-                        color: AppTheme.lightSleepColor,
-                        total: totalMinutes,
-                      ),
-                      _SleepStageTile(
-                        label: 'REM Sleep',
-                        duration: remMinutes,
-                        color: AppTheme.remSleepColor,
-                        total: totalMinutes,
-                      ),
-                      _SleepStageTile(
-                        label: 'Awake',
-                        duration: awakeMinutes,
-                        color: AppTheme.awakeColor,
-                        total: totalMinutes,
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Legend grid (2 columns)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _LegendItem(
+                            color: AppTheme.deepSleepColor,
+                            label: 'Deep Sleep',
+                            minutes: deepMinutes,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _LegendItem(
+                            color: AppTheme.lightSleepColor,
+                            label: 'Light Sleep',
+                            minutes: lightMinutes,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _LegendItem(
+                            color: AppTheme.remSleepColor,
+                            label: 'REM Sleep',
+                            minutes: remMinutes,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _LegendItem(
+                            color: AppTheme.awakeColor,
+                            label: 'Awake',
+                            minutes: awakeMinutes,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
               // Timeline
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Timeline',
-                          style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: 12),
-                      ...segments
-                          .where((s) =>
-                              s.type != SleepType.none &&
-                              s.type != SleepType.unworn)
-                          .map((s) => _TimelineItem(segment: s)),
+              Text('TIMELINE',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
+                    color: AppTheme.onSurfaceVariant,
+                  )),
+              const SizedBox(height: 12),
+              Container(
+                decoration: AppTheme.cardDecoration(),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (final (i, s) in segments
+                        .where((s) =>
+                            s.type != SleepType.none &&
+                            s.type != SleepType.unworn)
+                        .indexed) ...[
+                      if (i > 0)
+                        Divider(
+                            height: 1,
+                            color: AppTheme.outlineVariant
+                                .withValues(alpha: 0.4)),
+                      _TimelineRow(segment: s),
                     ],
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -187,7 +264,8 @@ class SleepScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const Icon(Icons.error_outline_rounded,
+                  size: 48, color: AppTheme.error),
               const SizedBox(height: 16),
               Text('Error: $e'),
               const SizedBox(height: 16),
@@ -203,48 +281,154 @@ class SleepScreen extends ConsumerWidget {
   }
 }
 
-class _SleepStageTile extends StatelessWidget {
+class _MiniStat extends StatelessWidget {
   final String label;
-  final int duration;
+  final String value;
   final Color color;
-  final int total;
 
-  const _SleepStageTile({
-    required this.label,
-    required this.duration,
-    required this.color,
-    required this.total,
-  });
+  const _MiniStat(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    final pct = total > 0 ? (duration / total * 100).round() : 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+            color: AppTheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LegendItem extends StatelessWidget {
+  final Color color;
+  final String label;
+  final int minutes;
+
+  const _LegendItem(
+      {required this.color, required this.label, required this.minutes});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 15, color: AppTheme.onSurface),
+          ),
+        ),
+        Text(
+          '${minutes ~/ 60}h ${minutes % 60}m',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TimelineRow extends StatelessWidget {
+  final SleepSegment segment;
+
+  const _TimelineRow({required this.segment});
+
+  Color get _color => switch (segment.type) {
+        SleepType.deep => AppTheme.deepSleepColor,
+        SleepType.light => AppTheme.lightSleepColor,
+        SleepType.rem => AppTheme.remSleepColor,
+        SleepType.awake => AppTheme.awakeColor,
+        _ => AppTheme.outline,
+      };
+
+  IconData get _icon => switch (segment.type) {
+        SleepType.deep => Icons.bedtime_rounded,
+        SleepType.light => Icons.brightness_low_rounded,
+        SleepType.rem => Icons.psychology_rounded,
+        SleepType.awake => Icons.wb_sunny_rounded,
+        _ => Icons.circle,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final hasRange = segment.startTime.isNotEmpty;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Row(
         children: [
           Container(
-            width: 12,
-            height: 12,
-            decoration:
-                BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: _color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(_icon, color: _color, size: 18),
           ),
-          const SizedBox(width: 10),
-          Expanded(child: Text(label)),
-          Text(
-            '${duration ~/ 60}h ${duration % 60}m',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: color,
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasRange
+                      ? '${segment.startTime} - ${segment.endTime}'
+                      : '${segment.durationMinutes} min',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: AppTheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Duration: ${segment.durationMinutes} min',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 40,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: _color.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(999),
+            ),
             child: Text(
-              '$pct%',
-              textAlign: TextAlign.right,
-              style: Theme.of(context).textTheme.bodyMedium,
+              segment.type.label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: _color,
+              ),
             ),
           ),
         ],
@@ -253,54 +437,43 @@ class _SleepStageTile extends StatelessWidget {
   }
 }
 
-class _TimelineItem extends StatelessWidget {
-  final SleepSegment segment;
+class _SleepRingPainter extends CustomPainter {
+  final double fraction;
 
-  const _TimelineItem({required this.segment});
-
-  Color get _color => switch (segment.type) {
-        SleepType.deep => AppTheme.deepSleepColor,
-        SleepType.light => AppTheme.lightSleepColor,
-        SleepType.rem => AppTheme.remSleepColor,
-        SleepType.awake => AppTheme.awakeColor,
-        _ => Colors.grey,
-      };
+  _SleepRingPainter({required this.fraction});
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 24,
-            decoration: BoxDecoration(
-              color: _color,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            segment.startTime.isNotEmpty
-                ? '${segment.startTime} - ${segment.endTime}'
-                : '${segment.durationMinutes}m',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: _color.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              segment.type.label,
-              style: TextStyle(fontSize: 12, color: _color),
-            ),
-          ),
-        ],
-      ),
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 8;
+    const stroke = 8.0;
+
+    final bgPaint = Paint()
+      ..color = AppTheme.outlineVariant.withValues(alpha: 0.3)
+      ..strokeWidth = stroke
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    final sweep = 2 * math.pi * fraction.clamp(0.0, 1.0);
+    final fgPaint = Paint()
+      ..strokeWidth = stroke
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..shader = const SweepGradient(
+        colors: [AppTheme.primary, AppTheme.mint, AppTheme.primary],
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      sweep,
+      false,
+      fgPaint,
     );
   }
+
+  @override
+  bool shouldRepaint(covariant _SleepRingPainter old) =>
+      old.fraction != fraction;
 }
