@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/ble_device.dart';
 import '../../../main.dart';
 import '../../providers/providers.dart';
+import '../../widgets/app_bottom_nav.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -120,78 +121,82 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final device = ref.watch(connectedDeviceProvider);
     final battery = ref.watch(batteryProvider);
     final sport = ref.watch(sportDataProvider);
     final deviceInfo = ref.watch(deviceInfoProvider);
-    final features = ref.watch(featureMapProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(device?.name ?? 'QCBand'),
+        titleSpacing: 16,
+        title: const Text(
+          'VitalHealth',
+          style: TextStyle(
+            color: AppTheme.primary,
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.3,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
+            color: AppTheme.onSurfaceVariant,
             onPressed: _refreshData,
           ),
           IconButton(
-            icon: const Icon(Icons.bluetooth_disabled),
+            icon: const Icon(Icons.bluetooth_disabled_rounded),
+            color: AppTheme.onSurfaceVariant,
             onPressed: _disconnect,
           ),
+          const SizedBox(width: 4),
         ],
       ),
+      bottomNavigationBar: const AppBottomNav(activeIndex: 0),
       body: RefreshIndicator(
         onRefresh: _refreshData,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            // Battery & Device Info
-            _BatteryDeviceCard(
-              battery: battery,
-              deviceInfo: deviceInfo,
-            ),
-            const SizedBox(height: 16),
+            _DeviceStatusCard(battery: battery, deviceInfo: deviceInfo),
+            const SizedBox(height: 24),
 
-            // Activity summary
-            _ActivityCard(sport: sport),
+            // Today's Activity
+            Text("Today's Activity",
+                style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 16),
+            _ActivityGrid(sport: sport),
+            const SizedBox(height: 24),
 
-            // Navigation cards
-            Text(
-              'Health Metrics',
-              style: Theme.of(context).textTheme.titleLarge,
+            // Health Metrics
+            Text('Health Metrics',
+                style: Theme.of(context).textTheme.headlineMedium),
+            const SizedBox(height: 16),
+            _MetricRow(
+              icon: Icons.favorite_rounded,
+              iconColor: AppTheme.tertiary,
+              title: 'Heart Rate',
+              subtitle: '72 BPM - Just now',
+              onTap: () => context.go('/heart-rate'),
             ),
             const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _NavCard(
-                    icon: Icons.favorite,
-                    label: 'Heart Rate',
-                    color: AppTheme.heartRateColor,
-                    onTap: () => context.go('/heart-rate'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _NavCard(
-                    icon: Icons.bedtime,
-                    label: 'Sleep',
-                    color: AppTheme.sleepColor,
-                    onTap: () => context.go('/sleep'),
-                  ),
-                ),
-              ],
+            _MetricRow(
+              icon: Icons.bedtime_rounded,
+              iconColor: AppTheme.primary,
+              title: 'Sleep',
+              subtitle: '6h 53m - Last night',
+              onTap: () => context.go('/sleep'),
             ),
             const SizedBox(height: 12),
-
-            _NavCard(
-              icon: Icons.water_drop,
-              label: 'Blood Oxygen (SpO2)',
-              color: AppTheme.spo2Color,
+            _MetricRow(
+              icon: Icons.water_drop_rounded,
+              iconColor: AppTheme.secondary,
+              title: 'Blood Oxygen (SpO2)',
+              subtitle: '98% - Optimal',
               onTap: () => context.go('/spo2'),
             ),
+            const SizedBox(height: 24),
+
+            const _InsightCard(),
           ],
         ),
       ),
@@ -199,237 +204,367 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 }
 
-class _BatteryDeviceCard extends StatelessWidget {
+class _DeviceStatusCard extends StatelessWidget {
   final dynamic battery;
   final dynamic deviceInfo;
 
-  const _BatteryDeviceCard({this.battery, this.deviceInfo});
+  const _DeviceStatusCard({this.battery, this.deviceInfo});
 
   @override
   Widget build(BuildContext context) {
     final level = battery?.level ?? 0;
     final charging = battery?.charging ?? false;
+    final deviceName = 'QCBand Pro X1';
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            // Battery indicator
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: AppTheme.batteryColor.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    charging
-                        ? Icons.battery_charging_full
-                        : level > 50
-                            ? Icons.battery_full
-                            : level > 20
-                                ? Icons.battery_3_bar
-                                : Icons.battery_1_bar,
-                    color: level > 20 ? AppTheme.batteryColor : AppTheme.heartRateColor,
-                    size: 24,
-                  ),
-                  Text(
-                    '$level%',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: level > 20 ? AppTheme.batteryColor : AppTheme.heartRateColor,
-                    ),
-                  ),
-                ],
-              ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: AppTheme.cardDecoration(),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.secondaryContainer.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(14),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    charging ? 'Charging' : 'Battery',
+            child: Icon(
+              charging
+                  ? Icons.battery_charging_full_rounded
+                  : level > 20
+                      ? Icons.battery_full_rounded
+                      : Icons.battery_1_bar_rounded,
+              color: level > 20 ? AppTheme.secondary : AppTheme.tertiary,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'DEVICE STATUS',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
+                    color: AppTheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  deviceName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  charging
+                      ? 'Charging - $level%'
+                      : '$level% Battery Remaining',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.secondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (deviceInfo != null)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('HW: ${deviceInfo.hardware}',
                     style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                  if (deviceInfo != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'HW: ${deviceInfo.hardware}  SW: ${deviceInfo.software}',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ],
-              ),
+                        fontSize: 11, color: AppTheme.outline)),
+                Text('SW: ${deviceInfo.software}',
+                    style: const TextStyle(
+                        fontSize: 11, color: AppTheme.outline)),
+              ],
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
 }
 
-class _ActivityCard extends StatelessWidget {
+class _ActivityGrid extends StatelessWidget {
   final dynamic sport;
 
-  const _ActivityCard({this.sport});
+  const _ActivityGrid({this.sport});
 
   @override
   Widget build(BuildContext context) {
     final steps = sport?.steps ?? 0;
     final calories = sport?.calories ?? 0.0;
     final distance = sport?.distance ?? 0;
-    final activeMinutes = sport?.activeMinutes ?? 0;
+    final goalPct = ((steps / 10000) * 100).clamp(0, 100).round();
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Today\'s Activity',
-                style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _MetricTile(
-                    icon: Icons.directions_walk,
-                    label: 'Steps',
-                    value: '$steps',
-                    color: AppTheme.stepsColor,
-                  ),
-                ),
-                Expanded(
-                  child: _MetricTile(
-                    icon: Icons.local_fire_department,
-                    label: 'Calories',
-                    value: '${calories.toInt()} kcal',
-                    color: AppTheme.caloriesColor,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _MetricTile(
-                    icon: Icons.straighten,
-                    label: 'Distance',
-                    value: '${(distance / 1000).toStringAsFixed(1)} km',
-                    color: AppTheme.distanceColor,
-                  ),
-                ),
-                Expanded(
-                  child: _MetricTile(
-                    icon: Icons.timer,
-                    label: 'Active',
-                    value: '$activeMinutes min',
-                    color: AppTheme.sleepColor,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MetricTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _MetricTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(width: 8),
-        Column(
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: Theme.of(context).textTheme.bodyMedium),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
+            Expanded(
+              child: _ActivityTile(
+                icon: Icons.directions_walk_rounded,
+                iconColor: AppTheme.primary,
+                value: '$steps',
+                label: 'STEPS',
+                badge: '$goalPct%',
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _ActivityTile(
+                icon: Icons.local_fire_department_rounded,
+                iconColor: AppTheme.tertiary,
+                value: '${calories.toInt()}',
+                unit: 'kcal',
+                label: 'CALORIES',
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 16),
+        _ActivityTile(
+          icon: Icons.straighten_rounded,
+          iconColor: AppTheme.secondary,
+          value: (distance / 1000).toStringAsFixed(1),
+          unit: 'km',
+          label: 'DISTANCE',
+          wide: true,
         ),
       ],
     );
   }
 }
 
-class _NavCard extends StatelessWidget {
+class _ActivityTile extends StatelessWidget {
   final IconData icon;
+  final Color iconColor;
+  final String value;
+  final String? unit;
   final String label;
-  final Color color;
+  final String? badge;
+  final bool wide;
+
+  const _ActivityTile({
+    required this.icon,
+    required this.iconColor,
+    required this.value,
+    this.unit,
+    required this.label,
+    this.badge,
+    this.wide = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: AppTheme.cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(icon, color: iconColor),
+              if (badge != null)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryFixed.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    badge!,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: wide ? 12 : 36),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RichText(
+                text: TextSpan(
+                  text: value,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.onSurface,
+                  ),
+                  children: [
+                    if (unit != null)
+                      TextSpan(
+                        text: ' $unit',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w400,
+                          color: AppTheme.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                  color: AppTheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricRow extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
   final VoidCallback onTap;
 
-  const _NavCard({
+  const _MetricRow({
     required this.icon,
-    required this.label,
-    required this.color,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: AppTheme.cardDecoration(),
           child: Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  color: iconColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: color),
+                child: Icon(icon, color: iconColor, size: 24),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: Colors.white38),
+              const Icon(Icons.chevron_right_rounded, color: AppTheme.outline),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _InsightCard extends StatelessWidget {
+  const _InsightCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppTheme.primary,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -8,
+            top: 8,
+            child: Icon(
+              Icons.trending_up_rounded,
+              size: 96,
+              color: Colors.white.withValues(alpha: 0.12),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'DAILY INSIGHT',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                  color: Colors.white.withValues(alpha: 0.8),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const SizedBox(
+                width: 240,
+                child: Text(
+                  'Your recovery rate is 15% higher today.',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Great job maintaining a consistent sleep schedule this week!',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
