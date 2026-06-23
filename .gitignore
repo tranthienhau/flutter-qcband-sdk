@@ -6,3 +6,9 @@ build/
 *.iml
 .idea/
 .vscode/
+.DS_Store
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.podspec
+ios/Podfile.lock
+android/.gradle/

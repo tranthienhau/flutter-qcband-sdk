@@ -31,7 +31,7 @@ class QCBandApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'QCBand Health',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
       routerConfig: appRouter,
     );
   }
