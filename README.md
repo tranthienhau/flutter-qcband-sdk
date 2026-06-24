@@ -2,7 +2,7 @@
 
 Flutter proof-of-concept that wraps the **QCBandSDK** (iOS `.framework` + Android `.aar`) via **Flutter Platform Channels** and exposes a full health-bracelet UI built with **Riverpod** state management and **GoRouter** navigation. The app demonstrates BLE scanning, device connection, real-time heart rate monitoring, sleep analysis, and blood-oxygen (SpO2) readings - all exercisable on an iOS Simulator via built-in **Demo Mode** without a physical device.
 
-The UI follows the **Vitality Health Systems** design system - a light, clinical-yet-energetic look built on Medical Blue (`#0058BC`) and Mint (`#00D1B2`), white cards on a near-white canvas, Inter typography, and a 16px rounded geometry.
+The UI follows the **Vitality Core** "Clinical Optimism" design system - a bright, vibrant wellness look that colour-codes each health metric: Energetic Coral (`#B32822`) for heart rate and primary actions, Deep Violet (`#4D41DF`) for sleep and recovery, and Teal (`#00A891`) for activity and SpO2. White cards sit on a near-white canvas with Inter typography, soft ambient shadows, and rounded geometry.
 
 ## Demo
 
@@ -48,7 +48,7 @@ Live demo recorded on iPhone 17 Pro Simulator (auto-tour through scan -> dashboa
 lib/
   core/
     constants/   sdk_constants.dart      # channel names + method/event keys
-    theme/       app_theme.dart          # Vitality Health light design system + semantic colors
+    theme/       app_theme.dart          # Vitality Core vibrant design system + semantic metric colors
   data/
     models/      ble_device, battery_info, device_info,
                  heart_rate_reading, sleep_segment,

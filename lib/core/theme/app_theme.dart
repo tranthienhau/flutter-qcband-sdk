@@ -1,41 +1,42 @@
 import 'package:flutter/material.dart';
 
-/// Vitality Health Systems design system.
-/// Light, clinical-yet-energetic: Medical Blue primary + Mint accent,
-/// white cards on a near-white canvas, Inter typography, 16px rounding.
+/// Vitality Core design system.
+/// "Clinical Optimism" - light, vibrant wellness theme: Energetic Coral primary,
+/// Deep Violet for sleep/recovery, Teal for activity. White cards on a near-white
+/// canvas, Inter typography, soft ambient shadows, generous rounding.
 class AppTheme {
   AppTheme._();
 
   // -- Core palette (Material 3 tonal roles) --
-  static const primary = Color(0xFF0058BC); // Medical Blue
-  static const primaryContainer = Color(0xFF0070EB);
+  static const primary = Color(0xFFB32822); // Energetic Coral (heart, primary actions)
+  static const primaryContainer = Color(0xFFFF5F52);
   static const onPrimary = Color(0xFFFFFFFF);
-  static const primaryFixed = Color(0xFFD8E2FF);
+  static const primaryFixed = Color(0xFFFFDAD5);
 
-  static const secondary = Color(0xFF006B5A); // Mint text/icon
-  static const mint = Color(0xFF00D1B2); // Brand Mint fill
-  static const mintDim = Color(0xFF2CDEBF);
-  static const secondaryContainer = Color(0xFF54F8D7);
+  static const secondary = Color(0xFF4D41DF); // Deep Violet (sleep, recovery)
+  static const mint = Color(0xFF00A891); // Teal accent (activity, SpO2)
+  static const mintDim = Color(0xFF44DDC1);
+  static const secondaryContainer = Color(0xFFC4C0FF); // Light violet tonal
 
-  static const tertiary = Color(0xFFBC000A); // Alert / heart red
-  static const tertiaryContainer = Color(0xFFE2241F);
+  static const tertiary = Color(0xFF006B5C); // Teal
+  static const tertiaryContainer = Color(0xFF00A891);
 
   static const error = Color(0xFFBA1A1A);
 
-  static const background = Color(0xFFFAF9FE);
+  static const background = Color(0xFFF8F9FA);
   static const surface = Color(0xFFFFFFFF); // surface-container-lowest (cards)
-  static const surfaceLow = Color(0xFFF4F3F8);
-  static const surfaceHigh = Color(0xFFE9E7ED);
-  static const surfaceHighest = Color(0xFFE3E2E7);
+  static const surfaceLow = Color(0xFFF3F4F5);
+  static const surfaceHigh = Color(0xFFE7E8E9);
+  static const surfaceHighest = Color(0xFFE1E3E4);
 
-  static const onSurface = Color(0xFF1A1B1F);
-  static const onSurfaceVariant = Color(0xFF414755);
-  static const outline = Color(0xFF717786);
-  static const outlineVariant = Color(0xFFC1C6D7);
+  static const onSurface = Color(0xFF191C1D);
+  static const onSurfaceVariant = Color(0xFF5A413D); // warm neutral
+  static const outline = Color(0xFF8E706C);
+  static const outlineVariant = Color(0xFFE2BEBA); // warm hairline
 
-  // Ambient card shadow (Z-2 in the design spec).
+  // Ambient "Natural Light" card shadow (per design spec).
   static const cardShadow = BoxShadow(
-    color: Color(0x0D000000), // rgba(0,0,0,0.05)
+    color: Color(0x14191C1D), // rgba(25,28,29,0.08)
     blurRadius: 12,
     offset: Offset(0, 4),
   );
@@ -43,7 +44,7 @@ class AppTheme {
   static BoxDecoration cardDecoration({Color? color}) => BoxDecoration(
         color: color ?? surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: outlineVariant.withValues(alpha: 0.3)),
+        border: Border.all(color: outlineVariant.withValues(alpha: 0.5)),
         boxShadow: const [cardShadow],
       );
 
@@ -58,6 +59,7 @@ class AppTheme {
           secondary: secondary,
           secondaryContainer: secondaryContainer,
           tertiary: tertiary,
+          tertiaryContainer: tertiaryContainer,
           error: error,
           surface: surface,
           onSurface: onSurface,
@@ -96,7 +98,7 @@ class AppTheme {
         cardTheme: CardThemeData(
           color: surface,
           surfaceTintColor: Colors.transparent,
-          shadowColor: Colors.black.withValues(alpha: 0.05),
+          shadowColor: Colors.black.withValues(alpha: 0.08),
           elevation: 1.5,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -130,18 +132,19 @@ class AppTheme {
         ),
       );
 
-  // -- Health metric accent colors (mapped onto the new palette) --
-  static const heartRateColor = tertiary; // #BC000A
-  static const sleepColor = primary; // #0058BC
-  static const spo2Color = mint; // #00D1B2
-  static const stepsColor = primary;
-  static const caloriesColor = tertiary;
-  static const distanceColor = secondary;
-  static const batteryColor = secondary;
+  // -- Health metric accent colors (semantic, per design) --
+  static const heartRateColor = primary; // Coral
+  static const sleepColor = secondary; // Violet
+  static const spo2Color = tertiary; // Teal
+  static const stepsColor = Color(0xFFEA580C); // Orange
+  static const caloriesColor = primary; // Coral
+  static const distanceColor = Color(0xFF2563EB); // Blue
+  static const activeColor = Color(0xFF7C3AED); // Purple
+  static const batteryColor = tertiary; // Teal (connected)
 
-  // -- Sleep stage colors --
-  static const deepSleepColor = Color(0xFF1D4ED8); // blue-700
-  static const lightSleepColor = Color(0xFF60A5FA); // blue-400
-  static const remSleepColor = Color(0xFFC084FC); // purple-400
-  static const awakeColor = Color(0xFFFB923C); // orange-400
+  // -- Sleep stage colors (violet/teal family) --
+  static const deepSleepColor = Color(0xFF3622CA); // deep violet
+  static const lightSleepColor = Color(0xFF675DF9); // violet
+  static const remSleepColor = Color(0xFF00A891); // teal
+  static const awakeColor = Color(0xFFF59E0B); // amber
 }

@@ -129,7 +129,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       appBar: AppBar(
         titleSpacing: 16,
         title: const Text(
-          'VitalHealth',
+          'QCBand Health',
           style: TextStyle(
             color: AppTheme.primary,
             fontSize: 20,
@@ -173,7 +173,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             const SizedBox(height: 16),
             _MetricRow(
               icon: Icons.favorite_rounded,
-              iconColor: AppTheme.tertiary,
+              iconColor: AppTheme.heartRateColor,
               title: 'Heart Rate',
               subtitle: '72 BPM - Just now',
               onTap: () => context.go('/heart-rate'),
@@ -181,7 +181,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             const SizedBox(height: 12),
             _MetricRow(
               icon: Icons.bedtime_rounded,
-              iconColor: AppTheme.primary,
+              iconColor: AppTheme.sleepColor,
               title: 'Sleep',
               subtitle: '6h 53m - Last night',
               onTap: () => context.go('/sleep'),
@@ -189,7 +189,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             const SizedBox(height: 12),
             _MetricRow(
               icon: Icons.water_drop_rounded,
-              iconColor: AppTheme.secondary,
+              iconColor: AppTheme.spo2Color,
               title: 'Blood Oxygen (SpO2)',
               subtitle: '98% - Optimal',
               onTap: () => context.go('/spo2'),
@@ -233,7 +233,7 @@ class _DeviceStatusCard extends StatelessWidget {
                   : level > 20
                       ? Icons.battery_full_rounded
                       : Icons.battery_1_bar_rounded,
-              color: level > 20 ? AppTheme.secondary : AppTheme.tertiary,
+              color: level > 20 ? AppTheme.batteryColor : AppTheme.error,
             ),
           ),
           const SizedBox(width: 16),
@@ -267,7 +267,7 @@ class _DeviceStatusCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.secondary,
+                    color: AppTheme.batteryColor,
                   ),
                 ),
               ],
@@ -311,7 +311,7 @@ class _ActivityGrid extends StatelessWidget {
             Expanded(
               child: _ActivityTile(
                 icon: Icons.directions_walk_rounded,
-                iconColor: AppTheme.primary,
+                iconColor: AppTheme.stepsColor,
                 value: '$steps',
                 label: 'STEPS',
                 badge: '$goalPct%',
@@ -321,7 +321,7 @@ class _ActivityGrid extends StatelessWidget {
             Expanded(
               child: _ActivityTile(
                 icon: Icons.local_fire_department_rounded,
-                iconColor: AppTheme.tertiary,
+                iconColor: AppTheme.caloriesColor,
                 value: '${calories.toInt()}',
                 unit: 'kcal',
                 label: 'CALORIES',
@@ -332,7 +332,7 @@ class _ActivityGrid extends StatelessWidget {
         const SizedBox(height: 16),
         _ActivityTile(
           icon: Icons.straighten_rounded,
-          iconColor: AppTheme.secondary,
+          iconColor: AppTheme.distanceColor,
           value: (distance / 1000).toStringAsFixed(1),
           unit: 'km',
           label: 'DISTANCE',

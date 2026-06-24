@@ -85,7 +85,7 @@ class Spo2Screen extends ConsumerWidget {
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   letterSpacing: 2,
-                                  color: AppTheme.secondary,
+                                  color: AppTheme.tertiary,
                                 ),
                               ),
                             ],
@@ -206,7 +206,7 @@ class Spo2Screen extends ConsumerWidget {
   }
 
   Color _statusColor(double spo2) {
-    if (spo2 >= 95) return AppTheme.secondary;
+    if (spo2 >= 95) return AppTheme.tertiary;
     if (spo2 >= 90) return AppTheme.awakeColor;
     return AppTheme.error;
   }
@@ -272,11 +272,11 @@ class _ReadingCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppTheme.secondaryContainer.withValues(alpha: 0.2),
+              color: AppTheme.tertiaryContainer.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.water_drop_rounded,
-                color: AppTheme.secondary, size: 20),
+                color: AppTheme.tertiary, size: 20),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -307,7 +307,7 @@ class _ReadingCard extends StatelessWidget {
                 value: reading.spo2 / 100,
                 backgroundColor: AppTheme.surfaceHighest,
                 color: reading.spo2 >= 95
-                    ? AppTheme.secondary
+                    ? AppTheme.tertiary
                     : reading.spo2 >= 90
                         ? AppTheme.awakeColor
                         : AppTheme.error,
@@ -359,7 +359,7 @@ class _SpO2GaugePainter extends CustomPainter {
         colors: [
           AppTheme.mintDim,
           AppTheme.mint,
-          AppTheme.secondary,
+          AppTheme.tertiary,
         ],
       ).createShader(Rect.fromCircle(center: center, radius: radius));
 

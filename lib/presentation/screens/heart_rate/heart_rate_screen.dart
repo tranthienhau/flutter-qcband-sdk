@@ -151,8 +151,8 @@ class _HeartRateScreenState extends ConsumerState<HeartRateScreen>
                   Icons.favorite_rounded,
                   size: 64,
                   color: isMonitoring && latestBpm > 0
-                      ? AppTheme.tertiaryContainer
-                      : AppTheme.tertiaryContainer.withValues(alpha: 0.4),
+                      ? AppTheme.primaryContainer
+                      : AppTheme.primaryContainer.withValues(alpha: 0.4),
                 ),
               ),
               const SizedBox(height: 16),
@@ -363,7 +363,7 @@ class _HeartRateChartPainter extends CustomPainter {
 
     // Line chart
     final linePaint = Paint()
-      ..color = AppTheme.tertiary
+      ..color = AppTheme.primary
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
@@ -374,8 +374,8 @@ class _HeartRateChartPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          AppTheme.tertiaryContainer.withValues(alpha: 0.25),
-          AppTheme.tertiaryContainer.withValues(alpha: 0.0),
+          AppTheme.primaryContainer.withValues(alpha: 0.25),
+          AppTheme.primaryContainer.withValues(alpha: 0.0),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
@@ -410,7 +410,7 @@ class _HeartRateChartPainter extends CustomPainter {
       canvas.drawCircle(
         Offset(lastX, lastY),
         5,
-        Paint()..color = AppTheme.tertiary,
+        Paint()..color = AppTheme.primary,
       );
       canvas.drawCircle(
         Offset(lastX, lastY),

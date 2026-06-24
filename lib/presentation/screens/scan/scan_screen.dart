@@ -188,7 +188,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('VitalHealth'),
+        title: const Text('QCBand Health'),
         titleTextStyle: const TextStyle(
           color: AppTheme.primary,
           fontSize: 20,
@@ -205,7 +205,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen>
               Column(
                 children: [
                   Text(
-                    'VitalHealth Scanner',
+                    'QCBand Health Scanner',
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   const SizedBox(height: 4),

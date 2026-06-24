@@ -36,7 +36,7 @@ class SleepScreen extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.bedtime_rounded,
-                      size: 64, color: AppTheme.primary),
+                      size: 64, color: AppTheme.secondary),
                   const SizedBox(height: 16),
                   Text('No sleep data available',
                       style: Theme.of(context).textTheme.titleLarge),
@@ -86,7 +86,7 @@ class SleepScreen extends ConsumerWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.bedtime_rounded,
-                              color: AppTheme.primary, size: 28),
+                              color: AppTheme.secondary, size: 28),
                           const SizedBox(height: 4),
                           Text(
                             '${totalMinutes ~/ 60}h ${totalMinutes % 60}m',
@@ -130,7 +130,7 @@ class SleepScreen extends ConsumerWidget {
                   _MiniStat(
                     label: 'QUALITY',
                     value: quality,
-                    color: AppTheme.primary,
+                    color: AppTheme.secondary,
                   ),
                 ],
               ),
@@ -461,7 +461,7 @@ class _SleepRingPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..shader = const SweepGradient(
-        colors: [AppTheme.primary, AppTheme.mint, AppTheme.primary],
+        colors: [AppTheme.secondary, AppTheme.mint, AppTheme.secondary],
       ).createShader(Rect.fromCircle(center: center, radius: radius));
 
     canvas.drawArc(
